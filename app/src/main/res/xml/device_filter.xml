@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Epson (vendor-id 0x04B8 = 1208) -->
+    <usb-device vendor-id="1208" />
+    <!-- Cualquier dispositivo de clase impresora -->
+    <usb-device class="7" />
+</resources>
