@@ -259,6 +259,37 @@ fun EpsonPrintMainScreen(
         }
     }
 
+    fun testStage1BlankPage() {
+        if (!isConnected || connectedDevice == null) {
+            onLog("⚠️ Primero debes detectar y conectar la impresora.")
+            return
+        }
+        val blankJob = EpsonEscPRaster.buildBlankPageJob(paperSize, printQuality)
+        val hexDump = EpsonEscPRaster.getHexDumpPreview(blankJob, 200)
+        onLog("📄 [Etapa 1] Enviando página en blanco ESC/P-R (${blankJob.size} bytes)...")
+        onLog("🔍 Hex Dump (primeros 200 bytes):\n$hexDump")
+
+        isPrinting = true
+        printProgress = 0.5f
+        printStatusText = "Enviando página en blanco ESC/P-R (Etapa 1)..."
+
+        scope.launch(Dispatchers.IO) {
+            val sent = usb.writeWithProgress(blankJob) { current, total ->
+                scope.launch(Dispatchers.Main) {
+                    printProgress = current.toFloat() / total.toFloat()
+                }
+            }
+            withContext(Dispatchers.Main) {
+                isPrinting = false
+                if (sent >= 0) {
+                    onLog("✅ [Etapa 1] Enviada ($sent bytes). La impresora debe tomar 1 sola hoja limpia y expulsarla.")
+                } else {
+                    onLog("❌ [Etapa 1] Error al enviar a la impresora.")
+                }
+            }
+        }
+    }
+
     fun startPrintingProcess(context: Context) {
         val file = selectedFile ?: return
         if (!isConnected) {
@@ -476,31 +507,49 @@ fun EpsonPrintMainScreen(
             }
 
             // Acciones Rápidas (Botones)
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedButton(
-                    onClick = { testWriteEscAt() },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(Icons.Default.Build, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Test (ESC @)", fontSize = 12.sp)
+                    OutlinedButton(
+                        onClick = { testWriteEscAt() },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Build, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Test (ESC @)", fontSize = 12.sp)
+                    }
+
+                    Button(
+                        onClick = { onPickFile() },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary
+                        )
+                    ) {
+                        Icon(Icons.Default.FileOpen, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Elegir Archivo", fontSize = 12.sp)
+                    }
                 }
 
                 Button(
-                    onClick = { onPickFile() },
-                    modifier = Modifier.weight(1f),
+                    onClick = { testStage1BlankPage() },
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
+                        containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Icon(Icons.Default.FileOpen, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Elegir Archivo", fontSize = 12.sp)
+                    Text("PROBAR ETAPA 1 (Página en blanco ESC/P-R)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
